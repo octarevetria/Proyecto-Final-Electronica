@@ -11,7 +11,7 @@
 #define GPS_TX 12
 #define GPS_BAUD 9600
 #define LORA_FREQ 866E6
-#define MESSAGE_COUNT_BEFORE_SLEEP 600  // Número de mensajes antes de entrar en modo de ahorro de energía
+#define MESSAGE_COUNT_BEFORE_SLEEP 10  // Número de mensajes antes de entrar en modo deep sleep
 #define SLEEP_DURATION 3600e6          // Duración del sueño en microsegundos (60 min)
 
 extern bool pmuInterrupt;  // Declare the external variable
@@ -32,7 +32,7 @@ int messageCount = 0;
 double latitude = 0.0;
 double longitude = 0.0;
 int satelliteCount = 0;
-int bateria = 69;
+int bateria = 0;
 int endPacketStatus = 0;
 bool loraListo = false;
 
@@ -45,24 +45,9 @@ void setup() {
 }
 
 void loop() {
-
-  //// MSJS de Depuracion /////
   Serial.print("isCharging:");
   Serial.println(PMU.isCharging() ? "YES" : "NO");
-  /*
-  //////////////////////////////////////////////////////
-  if (latitude == 0 && longitude == 0) {
-    while (Serial1.available() > 0) {
-      gps.encode(Serial1.read());
-    }
 
-    // Obtener los datos de ubicación
-    double latitude = gps.location.isValid() ? gps.location.lat() : 0.0;
-    double longitude = gps.location.isValid() ? gps.location.lng() : 0.0;
-    int satelliteCount = gps.satellites.isValid() ? gps.satellites.value() : 0;
-    int bateria = PMU.getBatteryPercent();
-  }
-  */
   while (Serial1.available() > 0) {
     gps.encode(Serial1.read());
   }
@@ -71,9 +56,6 @@ void loop() {
   double longitude = gps.location.isValid() ? gps.location.lng() : 0.0;
   int satelliteCount = gps.satellites.isValid() ? gps.satellites.value() : 0;
   int bateria = PMU.getBatteryPercent();
-
-  //latitude = 33.06;
-  //longitude = 33.03;
 
   if (latitude != 0 && longitude != 0) {
     if (loraListo == false) {
@@ -86,17 +68,16 @@ void loop() {
       setupLoRa();
       loraListo = true;
     }
-
-    // Crear un mensaje para enviar
-    String message = "{lat:" + String(latitude, 6) + ",lon:" + String(longitude, 6) + ",sat:" + String(satelliteCount) + ",trk:" + String(tracker_id) + ",bat:" + String(bateria) + "}";
+    // Crear un payload con formato designado
+    String payload = "{lat:" + String(latitude, 6) + ",lon:" + String(longitude, 6) + ",sat:" + String(satelliteCount) + ",trk:" + String(tracker_id) + ",bat:" + String(bateria) + "}";
 
     // Depuración: Mostrar el mensaje que se va a enviar
     Serial.print("Preparando para enviar: ");
-    Serial.println(message);
+    Serial.println(payload);
 
-    // Enviar los datos de GPS a través de LoRa
+    // Enviar toda la información a través de LoRa
     LoRa.beginPacket();
-    LoRa.print(message);
+    LoRa.print(payload);
 
     // Depuración: Verificar si se está iniciando el paquete
     Serial.println("Paquete iniciado");
@@ -111,15 +92,17 @@ void loop() {
       Serial.println("Error al enviar el paquete");
     }
 
-    // Mostrar los datos en el monitor serie
-    Serial.println("Enviado: " + message);
+    // Mostrar lo que se envio en el monitor serial
+    Serial.println("Enviado: " + payload);
+  } else 
+  {
+    Serial.println("No hay datos validos para enviar, espere...");
   }
   if (messageCount >= MESSAGE_COUNT_BEFORE_SLEEP) {
     //Entramos en modo ahorro de energia
     enterDeepSleep();
   }
-
-  Serial.println("No hay datos validos para enviar, espere...");
+  
   delay(5000);  // Esperar 5 segundos antes de enviar nuevamente
 }
 
