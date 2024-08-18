@@ -2,10 +2,8 @@
 #include <Wire.h>
 #include <SPI.h>
 #include <LoRa.h>
-#include <esp_now.h>  // https://github.com/espressif/esp-idf/blob/master/components/esp_wifi/include/esp_now.h
+#include <esp_now.h>
 #include <WiFi.h>
-uint8_t broadcastAddress[] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
-
 
 #define MSJ_BAUD 115200
 #define LORA_SS 18
@@ -13,10 +11,10 @@ uint8_t broadcastAddress[] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 #define LORA_DI0 26
 #define LORA_FREQ 866E6
 
+uint8_t broadcastAddress[] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+
 bool pmuInterrupt;
 int packetCounter = 0;
-unsigned long lastReceiveTime = 0;
-const unsigned long receiveTimeout = 10000;  // 10seg
 
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
   Serial.print(F("\r\n Master packet sent:\t"));
@@ -24,37 +22,31 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
 }
 void setupLoRa();
 
-
 PMUManager PMU(Wire, 21, 22, 0x34);
-
 
 void setup() {
   Wire.begin(21, 22);
-  //PMU.disablePowerOutput(XPOWERS_VBACKUP);
-  //PMU.disablePowerOutput(XPOWERS_ALDO2);
-  //PMU.disablePowerOutput(XPOWERS_ALDO3);
   delay(100);
   Serial.begin(115200);
   SPI.begin();
   PMU.setup();
   delay(100);
   setupLoRa();
-  // Set device as a Wi-Fi Station
+  // Setteo WiFi para esp_now
   WiFi.mode(WIFI_STA);
-  // Init ESP-NOW
+  // inicio esp_now
   if (esp_now_init() != ESP_OK) {
     Serial.println(F("Error initializing ESP-NOW"));
     return;
   }
-
-  // Define Send function
+  // Declaro el send de esp_now
   esp_now_register_send_cb(OnDataSent);
-  // Register peer
+  // Registro peer
   esp_now_peer_info_t peerInfo;
   memcpy(peerInfo.peer_addr, broadcastAddress, 6);
   peerInfo.channel = 0;
   peerInfo.encrypt = false;
-  // Add peer
+  // Lo agrego
   if (esp_now_add_peer(&peerInfo) != ESP_OK) {
     Serial.println(F("Failed to add peer"));
     ESP.restart();
@@ -75,7 +67,6 @@ void loop() {
     }
     received[i] = '\0';
     packetCounter++;
-    lastReceiveTime = millis();
     delay(100);
     Serial.print("Recibido (Paquete ");
     Serial.print(packetCounter);
@@ -83,9 +74,8 @@ void loop() {
     Serial.println(received);
     const char *datos_string = received;
     //Send message via ESP-NOW
-    Serial.print("Lo que mando por ESPnow: ");
+    Serial.print("Lo que mando por esp_now: ");
     Serial.println(datos_string);
-    //delay(100);
     esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *)datos_string, strlen(datos_string));
     Serial.print("Resultado esp_now send: ");
     Serial.println(result);
@@ -93,21 +83,6 @@ void loop() {
       ESP.restart();
     }
   }
-  /*
-  // Verificar si se ha superado el tiempo de espera para la recepción de datos
-  if (millis() - lastReceiveTime > receiveTimeout) {
-    Serial.println("Tiempo de espera superado. Reiniciando LoRa...");
-    ESP.restart();
-    delay(1000);
-    LoRa.end();
-    if (!LoRa.begin(LORA_FREQ)) {
-      Serial.println("Reinicialización de LoRa fallida!");
-      while (1)
-        ;
-    }
-    lastReceiveTime = millis();
-  }
-  */
 }
 
 void setupLoRa() {
