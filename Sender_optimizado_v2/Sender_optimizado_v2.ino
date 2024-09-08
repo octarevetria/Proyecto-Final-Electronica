@@ -3,8 +3,6 @@
 #include <LoRa.h>
 #include <TinyGPS++.h>
 #include <WiFi.h>
-//#include <BluetoothSerial.h>
-//#include <BLEDevice.h>
 #include "PMUManager.h"
 
 #define LORA_SS 18
@@ -45,11 +43,8 @@ void setup() {
   Serial.begin(115200);
   SPI.begin();
   PMU.setup();
+  WiFi.disconnect(true);
   WiFi.mode(WIFI_OFF);
-  //WiFi.end();
-  // Disable Bluetooth
-  //BluetoothSerial SerialBT;
-  //SerialBT.end();
   setupGPS();
 }
 
