@@ -2,6 +2,9 @@
 #include <SPI.h>
 #include <LoRa.h>
 #include <TinyGPS++.h>
+#include <WiFi.h>
+//#include <BluetoothSerial.h>
+//#include <BLEDevice.h>
 #include "PMUManager.h"
 
 #define LORA_SS 18
@@ -11,8 +14,9 @@
 #define GPS_TX 12
 #define GPS_BAUD 9600
 #define LORA_FREQ 866E6
-#define MESSAGE_COUNT_BEFORE_SLEEP 10  // Número de mensajes antes de entrar en modo deep sleep
-#define SLEEP_DURATION 3600e6          // Duración del sueño en microsegundos (60 min)
+#define MESSAGE_COUNT_BEFORE_SLEEP 5  // Número de mensajes antes de entrar en modo deep sleep
+#define TIME_COUNT_BEFORE_SLEEP 60E3   // Duración del ciclo en milisegundos (1 min)
+#define SLEEP_DURATION 3600E6            // Duración del sueño en microsegundos (60 min)
 
 extern bool pmuInterrupt;  // Declare the external variable
 
@@ -41,12 +45,17 @@ void setup() {
   Serial.begin(115200);
   SPI.begin();
   PMU.setup();
+  WiFi.mode(WIFI_OFF);
+  //WiFi.end();
+  // Disable Bluetooth
+  //BluetoothSerial SerialBT;
+  //SerialBT.end();
   setupGPS();
 }
 
 void loop() {
-  Serial.print("isCharging:");
-  Serial.println(PMU.isCharging() ? "YES" : "NO");
+  Serial.print("estaCargando:");
+  Serial.println(PMU.isCharging() ? "SI" : "NO");
 
   while (Serial1.available() > 0) {
     gps.encode(Serial1.read());
@@ -86,23 +95,35 @@ void loop() {
 
     // Depuración: Confirmar que el paquete ha sido enviado
     if (endPacketStatus == 1) {
-      Serial.println("Paquete enviado");
       messageCount++;
+      Serial.print("Paquete enviado numero ");
+      Serial.println(messageCount);
     } else {
       Serial.println("Error al enviar el paquete");
     }
 
     // Mostrar lo que se envio en el monitor serial
-    Serial.println("Enviado: " + payload);
-  } else 
-  {
+    Serial.print("Lo que se envio: ");
+    Serial.println(payload);
+  } else {
     Serial.println("No hay datos validos para enviar, espere...");
   }
   if (messageCount >= MESSAGE_COUNT_BEFORE_SLEEP) {
     //Entramos en modo ahorro de energia
+    Serial.print("Se realizaron ");
+    Serial.print(MESSAGE_COUNT_BEFORE_SLEEP);
+    Serial.println(" intentos de envio");
+    Serial.println("Se alcanzo el numero maximo de envios");
     enterDeepSleep();
   }
-  
+  if (timeAwake()) {
+    Serial.print("El emisor lleva ");
+    //Tiempo en minutos
+    Serial.print(TIME_COUNT_BEFORE_SLEEP / 60E3);
+    Serial.println(" minuto encendido");
+    Serial.println("Se alcanzo el tiempo maximo de encendido");
+    enterDeepSleep();
+  }
   delay(5000);  // Esperar 5 segundos antes de enviar nuevamente
 }
 
@@ -130,6 +151,14 @@ void setupLoRa() {
 void setupGPS() {
   Serial1.begin(GPS_BAUD, SERIAL_8N1, GPS_RX, GPS_TX);
   Serial.println("GPS inicializado correctamente.");
+}
+
+bool timeAwake() {
+  bool salida = false;
+  if (millis() > TIME_COUNT_BEFORE_SLEEP) {
+    salida = true;
+  }
+  return salida;
 }
 
 void enterDeepSleep() {

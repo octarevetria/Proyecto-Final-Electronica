@@ -12,7 +12,7 @@
 #define S232_RX 35
 #define S232_TX 32
 #define MSJ_BAUD 115200
-#define LORA_FREQ 868.0
+#define LORA_FREQ 866E6
 #define MESSAGE_COUNT_BEFORE_SLEEP 10  // Número de mensajes antes de entrar en modo de ahorro de energía
 #define SLEEP_DURATION 3600e6          // Duración del sueño en microsegundos (1 hora)
 
@@ -97,18 +97,24 @@ void loop() {
 void setupLoRa() {
   pinMode(LORA_SS, OUTPUT);
   digitalWrite(LORA_SS, HIGH);
+  delay(50);
   pinMode(LORA_RST, OUTPUT);
   digitalWrite(LORA_RST, HIGH);
+  delay(50);
   pinMode(LORA_DI0, INPUT);
 
   LoRa.setPins(LORA_SS, LORA_RST, LORA_DI0);
+  delay(1000);
   if (!LoRa.begin(LORA_FREQ)) {
     Serial.println("Iniciación de LoRa fallida!");
-    while (1)
+    while (1) {
       ;
+    }
   }
+  LoRa.setTxPower(20);
   LoRa.setSignalBandwidth(125E3);
-  LoRa.setSpreadingFactor(10);
-  LoRa.setCodingRate4(5);
+  LoRa.setSpreadingFactor(9);
+  LoRa.setCodingRate4(6);
+  LoRa.setPreambleLength(10);
   Serial.println("LoRa inicializado correctamente.");
 }

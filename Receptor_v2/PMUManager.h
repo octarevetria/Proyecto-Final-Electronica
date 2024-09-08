@@ -15,5 +15,5 @@ public:
     using XPowersAXP2101::setProtectedChannel;
 };
 
-
+extern bool pmuInterrupt; // Declare the external variable
   #endif // PMU_MANAGER_H
