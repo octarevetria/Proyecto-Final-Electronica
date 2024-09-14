@@ -24,7 +24,7 @@ def on_message_receiver(client, userdata, msg):
     payload = str(msg.payload)
     payload = payload[2::]
     payload = payload[:-1]
-    if payload.find('lat') is not -1:
+    if payload.find('trk') is not -1:
         resultado = sender_client.publish(sender_topic, payload)
         print("Resultado de enviar al broker: "+str(resultado.rc))
         print("Quiero enviar esto a ThingsBoard: ", payload)

@@ -14,8 +14,8 @@
 #define GPS_BAUD 9600
 #define LORA_FREQ 866E6
 #define MESSAGE_COUNT_BEFORE_SLEEP 10000  // Número de mensajes maximos antes de entrar en modo deep sleep
-#define TIME_COUNT_BEFORE_SLEEP 6000E3  // Duración del ciclo en milisegundos (100 min)
-#define SLEEP_DURATION 900E6           // Duración del sueño en microsegundos (15 min)
+#define TIME_COUNT_BEFORE_SLEEP 90E3  // Duración del ciclo en milisegundos (90 seg)
+#define SLEEP_DURATION 30E6           // Duración del sueño en microsegundos (30 seg)
 
 extern bool pmuInterrupt;  // Declare the external variable
 
@@ -117,13 +117,33 @@ void loop() {
     Serial.println(" intentos de envío máximos");
     enterDeepSleep();
   }
-  if (timeAwake()) // Si transcurren más de 2 minutos desde que se desperto, se vuelve a dormir
-  {
-    Serial.print("Se alcanzaron los ");
+if (timeAwake()) {
+    Serial.print("El emisor lleva ");
     //Tiempo en minutos
     Serial.print(TIME_COUNT_BEFORE_SLEEP / 60E3);
-    Serial.println(" minutos de encendido máximo");
-    enterDeepSleep();
+    Serial.println(" minuto encendido");
+    Serial.println("Se alcanzo el tiempo maximo de encendido");
+
+    if (!loraListo) {
+      Serial.println("Sin alcanzar la cobertura de satélites suficientes");
+
+      PMU.setPowerChannelVoltage(XPOWERS_ALDO2, 3300);
+      PMU.enablePowerOutput(XPOWERS_ALDO2);
+      setupLoRa();
+
+      // Payload de error
+      String info = "{sat:" + String(satelliteCount) + ",trk:" + String(tracker_id) + ",bat:" + String(bateria) + "}";
+      // Depuración: Mostrar el mensaje que se va a enviar
+      Serial.print("Preparando para enviar: ");
+      Serial.println(info);
+
+      // Enviar toda la información a través de LoRa
+      LoRa.beginPacket();
+      LoRa.print(info);
+
+      endPacketStatus = LoRa.endPacket();
+    }
+    enterDeepSleep();  //Estan con el mismo tiempo por ahora
   }
   delay(5000);  // Esperar 5 segundos antes de enviar nuevamente
 }
@@ -166,7 +186,7 @@ bool timeAwake()
 
 void enterDeepSleep() 
 {
-  Serial.println("Entrando en modo de ahorro de energía durante 15 minutos ...");
+  Serial.println("Entrando en modo de ahorro de energía durante 30 segundos ...");
 
   // Configurar el tiempo de sueño
   esp_sleep_enable_timer_wakeup(SLEEP_DURATION);
