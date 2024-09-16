@@ -3,6 +3,7 @@
 #include <LoRa.h>
 #include <TinyGPS++.h>
 #include <WiFi.h>
+#include "BluetoothSerial.h"
 #include "PMUManager.h"
 
 #define LORA_SS 18
@@ -12,10 +13,9 @@
 #define GPS_TX 12
 #define GPS_BAUD 9600
 #define LORA_FREQ 866E6
-#define MESSAGE_LIMIT_BEFORE_SLEEP 12        // Número de maximo de intentos de envío por ciclo
-#define TIME_LIMIT_BEFORE_SLEEP 60E3        // Duración del ciclo en milisegundos (1 min)
-#define SLEEP_DURATION_AFTER_SUCCESS 300E6  // Duración del sueño en microsegundos (5 min)
-//#define SLEEP_DURATION_AFTER_FAILURE 3600E6  // Duración del sueño en microsegundos (60 min)
+#define MESSAGE_LIMIT_BEFORE_SLEEP 3       // Número de maximo de intentos de envío por ciclo
+#define TIME_LIMIT_BEFORE_SLEEP 30E3        // Duración del ciclo en milisegundos (1 min)
+#define SLEEP_DURATION_AFTER_SUCCESS 1800E6  // Duración del sueño en microsegundos (30 min)
 
 extern bool pmuInterrupt;  // Declare the external variable
 
@@ -46,6 +46,7 @@ void setup() {
   PMU.setup();
   WiFi.disconnect(true);
   WiFi.mode(WIFI_OFF);
+  btStop(); 
   setupGPS();
 }
 
@@ -56,21 +57,12 @@ void loop() {
   while (Serial1.available() > 0) {
     gps.encode(Serial1.read());
   }
+
   // Obtener los datos de ubicación
-
-  Serial.print("valor de bateria antes del PMU: ");
-  Serial.println(bateria);
-
   double latitude = gps.location.isValid() ? gps.location.lat() : 0.0;
   double longitude = gps.location.isValid() ? gps.location.lng() : 0.0;
   int satelliteCount = gps.satellites.isValid() ? gps.satellites.value() : 0;
   int bateria = PMU.getBatteryPercent();
-
-  latitude = 33.2024;
-  longitude = 33.2024;
-
-  Serial.print("valor de bateria despues del PMU: ");
-  Serial.println(bateria);
 
   if (latitude != 0 && longitude != 0) {
     if (loraListo == false) {
@@ -130,14 +122,15 @@ void loop() {
     Serial.println("Se alcanzo el tiempo maximo de encendido");
 
     if (!loraListo) {
-      Serial.println("Sin alcanzar la cobertura de satélites suficientes");
+      Serial.println("Sin alcanzar la señal de al menos tres satélites");
 
       PMU.setPowerChannelVoltage(XPOWERS_ALDO2, 3300);
       PMU.enablePowerOutput(XPOWERS_ALDO2);
       setupLoRa();
 
-      // Payload de error
+      // Payload de espefico para falta cobertura GPS
       String info = "{sat:" + String(satelliteCount) + ",trk:" + String(tracker_id) + ",bat:" + String(bateria) + "}";
+      
       // Depuración: Mostrar el mensaje que se va a enviar
       Serial.print("Preparando para enviar: ");
       Serial.println(info);
@@ -150,7 +143,7 @@ void loop() {
     }
     enterDeepSleep();  //Estan con el mismo tiempo por ahora
   }
-  delay(5000);  // Esperar 5 segundos antes de enviar nuevamente
+  delay(3000);  // Esperar 3 segundos antes de enviar nuevamente
 }
 
 void setupLoRa() {
@@ -188,7 +181,7 @@ bool timeAwake() {
 }
 
 void enterDeepSleep() {
-  Serial.println("Entrando en modo de ahorro de energía durante 5 minutos ...");
+  Serial.println("Entrando en modo de ahorro de energía durante 30 minutos ...");
 
   // Configurar el tiempo de sueño
   esp_sleep_enable_timer_wakeup(SLEEP_DURATION_AFTER_SUCCESS);
