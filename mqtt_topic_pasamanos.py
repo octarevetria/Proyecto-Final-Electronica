@@ -4,8 +4,8 @@ import time
 
 receiver_broker_address = "mqtt.autolink.com.uy"
 receiver_topic = "#"
-receiver_username = "pruebas_tesis_ORT"
-receiver_password = "123456"
+receiver_username = "admin"
+receiver_password = "admin"
 
 sender_broker_address = "demo.thingsboard.io"
 sender_topic = "v1/devices/me/telemetry"
@@ -24,7 +24,7 @@ def on_message_receiver(client, userdata, msg):
     payload = str(msg.payload)
     payload = payload[2::]
     payload = payload[:-1]
-    if payload.find('trk') is not -1:
+    if payload.find('trk') != -1:
         resultado = sender_client.publish(sender_topic, payload)
         print("Resultado de enviar al broker: "+str(resultado.rc))
         print("Quiero enviar esto a ThingsBoard: ", payload)
@@ -40,7 +40,7 @@ receiver_client = mqtt.Client()
 receiver_client.username_pw_set(receiver_username, receiver_password)
 receiver_client.on_connect = on_connect_receiver
 receiver_client.on_message = on_message_receiver
-receiver_client.connect(receiver_broker_address, 1883, 60)
+receiver_client.connect(receiver_broker_address, 8883, 60)
 
 # comienzo del loop
 receiver_client.loop_start()

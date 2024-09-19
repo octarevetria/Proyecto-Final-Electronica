@@ -14,8 +14,8 @@
 #define GPS_BAUD 9600
 #define LORA_FREQ 866E6
 #define MESSAGE_COUNT_BEFORE_SLEEP 10000  // Número de mensajes maximos antes de entrar en modo deep sleep
-#define TIME_COUNT_BEFORE_SLEEP 90E3  // Duración del ciclo en milisegundos (90 seg)
-#define SLEEP_DURATION 30E6           // Duración del sueño en microsegundos (30 seg)
+#define TIME_COUNT_BEFORE_SLEEP 6000E3      // Duración del ciclo en milisegundos (6000 seg)
+#define SLEEP_DURATION 30E6               // Duración del sueño en microsegundos (30 seg)
 
 extern bool pmuInterrupt;  // Declare the external variable
 
@@ -65,8 +65,10 @@ void loop() {
   int satelliteCount = gps.satellites.isValid() ? gps.satellites.value() : 0;
   int bateria = PMU.getBatteryPercent();
 
-  if (latitude != 0 && longitude != 0) 
-  {
+  latitude = 33.202400;
+  longitude = 33.202400;
+
+  if (latitude != 0 && longitude != 0) {
     if (loraListo == false) {
       // Apagar GPS
       Serial.println("Info valida de GPS");
@@ -106,18 +108,17 @@ void loop() {
     // Mostrar lo que se envio en el monitor serial
     Serial.print("Lo que se envio: ");
     Serial.println(payload);
-  } else 
-  {
+  } else {
     Serial.println("No hay datos validos para enviar, espere...");
   }
-  if (messageCount >= MESSAGE_COUNT_BEFORE_SLEEP) // Tras 10 intentos de envío se duerme
+  if (messageCount >= MESSAGE_COUNT_BEFORE_SLEEP)  // Tras 10 intentos de envío se duerme
   {
     Serial.print("Se alcanzaron los ");
     Serial.print(MESSAGE_COUNT_BEFORE_SLEEP);
     Serial.println(" intentos de envío máximos");
     enterDeepSleep();
   }
-if (timeAwake()) {
+  if (timeAwake()) {
     Serial.print("El emisor lleva ");
     //Tiempo en minutos
     Serial.print(TIME_COUNT_BEFORE_SLEEP / 60E3);
@@ -148,8 +149,7 @@ if (timeAwake()) {
   delay(5000);  // Esperar 5 segundos antes de enviar nuevamente
 }
 
-void setupLoRa()
-{
+void setupLoRa() {
   pinMode(LORA_SS, OUTPUT);
   digitalWrite(LORA_SS, HIGH);
   pinMode(LORA_RST, OUTPUT);
@@ -157,8 +157,7 @@ void setupLoRa()
   pinMode(LORA_DI0, INPUT);
 
   LoRa.setPins(LORA_SS, LORA_RST, LORA_DI0);
-  while (!LoRa.begin(LORA_FREQ)) 
-  {
+  while (!LoRa.begin(LORA_FREQ)) {
     Serial.println("Iniciación de LoRa fallida!");
     delay(200);
   }
@@ -175,8 +174,7 @@ void setupGPS() {
   Serial.println("GPS inicializado correctamente.");
 }
 
-bool timeAwake() 
-{
+bool timeAwake() {
   bool salida = false;
   if (millis() > TIME_COUNT_BEFORE_SLEEP) {
     salida = true;
@@ -184,8 +182,7 @@ bool timeAwake()
   return salida;
 }
 
-void enterDeepSleep() 
-{
+void enterDeepSleep() {
   Serial.println("Entrando en modo de ahorro de energía durante 30 segundos ...");
 
   // Configurar el tiempo de sueño
